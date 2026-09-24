@@ -51,7 +51,7 @@ Create a `.env.local` file in the project root:
 SUPABASE_URL=https://your-project.supabase.co/rest/v1/
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 VAPI_API_KEY=your-vapi-api-key
-STAFF_PHONE=+1XXXXXXXXXX
+STAFF_PHONE=++1 (463) 223 1070 
 ```
 
 ### Local Development
