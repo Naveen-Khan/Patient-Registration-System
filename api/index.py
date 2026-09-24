@@ -336,6 +336,8 @@ async def check_phone_duplicate(check: PhoneCheck):
 # ==========================================
 # VAPI WEBHOOK ROUTE (For Voice AI Agent)
 # ==========================================
+# ... (apna purana code yahan tak same rahega) ...
+
 @app.post("/vapi-webhook")
 async def vapi_webhook(request: Request):
     payload = await request.json()
@@ -350,9 +352,20 @@ async def vapi_webhook(request: Request):
     
     print(f"Received Tool Call: {func_name} with params: {parameters}")
     
-    if func_name == "registerPatient":
+    if func_name == "checkExistingPatient":
         try:
-            # Validate using the same Pydantic model
+            phone = parameters.get("phone_number")
+            # Supabase se check karein
+            response = supabase.table("patients").select("*").eq("phone_number", phone).is_("deleted_at", None).execute()
+            if response.data:
+                patient = serialize_row(response.data[0])
+                return {"result": {"exists": True, "patient": patient}}
+            return {"result": {"exists": False, "patient": None}}
+        except Exception as e:
+            return {"result": {"success": False, "error": str(e)}}
+            
+    elif func_name == "registerPatient":
+        try:
             patient_data = PatientCreate(**parameters)
             
             # Duplicate check logic
@@ -378,6 +391,30 @@ async def vapi_webhook(request: Request):
             
         except Exception as e:
             print(f"Error registering patient via Vapi: {str(e)}")
+            return {"result": {"success": False, "error": str(e)}}
+            
+    elif func_name == "updatePatient":
+        try:
+            patient_id = parameters.get("patient_id")
+            if not patient_id:
+                return {"result": {"success": False, "error": "patient_id is required for update."}}
+                
+            update_data = {k: v for k, v in parameters.items() if k != "patient_id" and v}
+            
+            if "date_of_birth" in update_data:
+                dob_obj = datetime.strptime(update_data["date_of_birth"], "%m/%d/%Y")
+                update_data["date_of_birth"] = dob_obj.strftime("%Y-%m-%d")
+                
+            update_data["updated_at"] = now_utc()
+            
+            response = supabase.table("patients").update(update_data).eq("patient_id", patient_id).execute()
+            
+            if not response.data:
+                return {"result": {"success": False, "error": "Failed to update patient."}}
+                
+            return {"result": {"success": True, "patient_id": patient_id}}
+            
+        except Exception as e:
             return {"result": {"success": False, "error": str(e)}}
             
     elif func_name == "checkAvailability":
