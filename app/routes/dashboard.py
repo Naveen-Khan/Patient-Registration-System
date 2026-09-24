@@ -1,13 +1,13 @@
-"""Frontend Dashboard - HTML table for viewing registered patients."""
-
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
+from app.services.supabase import supabase
+from app.utils.helpers import serialize_row
 
 router = APIRouter()
 
+
 @router.get("/dashboard", response_class=HTMLResponse)
 async def get_dashboard():
-    from backend import supabase, serialize_row
     response = supabase.table("patients").select("*").order("created_at", desc=True).execute()
     patients = response.data if response.data else []
 

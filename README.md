@@ -33,27 +33,50 @@ Phone Call (Caller)
 ```
 patient-registration/
 │
-├── backend.py                    # FastAPI server: config, database, models, CRUD, webhook, server runner
-├── frontend.py                   # FastAPI router: HTML dashboard for viewing registered patients
 ├── api/
 │   └── .env                      # Environment variables (Supabase, Vapi, etc.)
-├── vercel.json                   # Vercel deployment configuration
-├── requirements.txt              # Python dependencies list
-├── schema.sql                    # Supabase database schema (patients table, indexes, triggers)
-├── README.md                     # This file
-└── .gitignore                    # Files to ignore (venv, __pycache__, api/.env)
+├── app/
+│   ├── __init__.py
+│   ├── main.py                   # FastAPI app initialization and server runner
+│   ├── config.py                 # Environment configuration and constants
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── patient.py            # Pydantic schemas (PatientCreate, PatientUpdate, PhoneCheck)
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   ├── patient.py            # Patient CRUD endpoints
+│   │   ├── webhook.py            # Vapi voice agent webhook handler
+│   │   └── dashboard.py          # HTML dashboard route
+│   ├── services/
+│   │   ├── __init__.py
+│   │   └── supabase.py           # Supabase client initialization
+│   └── utils/
+│       ├── __init__.py
+│       └── helpers.py            # Helper functions (now_utc, error_response, serialize_row)
+├── venv/
+├── requirements.txt
+├── schema.sql
+├── vercel.json
+├── README.md
+└── .gitignore
 ```
 
 ### File Purpose Reference
 
 | File | Purpose |
 |------|---------|
-| `backend.py` | **API server** (root level). Contains config loading, Supabase client, US state list, helper functions, all Pydantic models, FastAPI app instance, validation error handler, all CRUD endpoints, and Vapi webhook. |
-| `frontend.py` | **Dashboard router** (root level). Provides the `/dashboard` endpoint that renders an HTML table showing all registered patients. |
+| `app/main.py` | **App entry point.** FastAPI app initialization, health check, exception handler, and router registration. Runs uvicorn on port 8000 when executed directly. |
+| `app/config.py` | **Configuration.** Loads environment variables from `api/.env`, defines `SUPABASE_URL`, `US_STATE_ABBR`, and other constants. |
+| `app/models/patient.py` | **Pydantic schemas.** `PatientCreate`, `PatientUpdate`, `PhoneCheck` models with full validation (names, state, ZIP, phone, DOB). |
+| `app/routes/patient.py` | **Patient CRUD.** All patient endpoints (`/patients`, `/patients/:id`, `/patients/check-phone`) with duplicate detection. |
+| `app/routes/webhook.py` | **Vapi webhook.** Handles incoming webhook calls from Vapi (`/vapi-webhook`) for `checkExistingPatient`, `registerPatient`, `updatePatient`, etc. |
+| `app/routes/dashboard.py` | **Dashboard.** Renders HTML table of all registered patients at `/dashboard`. |
+| `app/services/supabase.py` | **Supabase client.** Initializes and exports the Supabase client instance. |
+| `app/utils/helpers.py` | **Utilities.** `now_utc()`, `error_response()`, `success_response()`, `serialize_row()`. |
 | `requirements.txt` | Lists all Python packages needed to run the project. |
 | `schema.sql` | SQL script to create the `patients` table, indexes, triggers, and seed data in Supabase. |
-| `vercel.json` | Tells Vercel how to build and deploy the application (framework, build steps, routing). |
-| `.gitignore` | Prevents sensitive files (`.env`, `venv/`, `__pycache__/`) from being committed to Git. |
+| `vercel.json` | Tells Vercel how to build and deploy the application. |
+| `.gitignore` | Prevents sensitive files (`api/.env`, `venv/`, `__pycache__/`) from being committed to Git. |
 
 ---
 
@@ -93,10 +116,10 @@ patient-registration/
    - **Important**: `SUPABASE_URL` should be `https://zjmsaiqztajzfclishnk.supabase.co` (without `/rest/v1/`).
 
 6. **Run the server locally**
-    ```bash
-    python backend.py
-    ```
-    The API will be available at `http://localhost:8000`.
+     ```bash
+     python -m app.main
+     ```
+     The API will be available at `http://localhost:8000`.
 
 7. **Test the API**
    - Health check: `http://localhost:8000/`
@@ -122,7 +145,7 @@ patient-registration/
 venv\Scripts\activate
 
 # Run the server
-python backend.py
+python -m app.main
 ```
 
 The server starts with hot-reload on `http://localhost:8000`. All endpoints are available at this address.
