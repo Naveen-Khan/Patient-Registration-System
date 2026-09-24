@@ -33,15 +33,9 @@ Phone Call (Caller)
 ```
 patient-registration/
 │
-├── api/                          # Main backend package (4 organized files)
-│   ├── __init__.py               # Package initializer - imports the FastAPI app
-│   ├── config.py                 # Environment variables (loads .env file)
-│   ├── database.py               # Supabase client + constants + helper functions
-│   ├── models.py                 # Pydantic schemas (PatientCreate, PatientUpdate, PhoneCheck)
-│   └── index.py                  # Everything else: app, all routes, dashboard, webhook
-│   └── .env                      # Environment variables (Supabase URL, keys, etc.)
-│
-├── main.py                       # Entry point - runs the FastAPI server with uvicorn
+├── backend.py                    # FastAPI server: config, database, models, CRUD, webhook, server runner
+├── frontend.py                   # FastAPI router: HTML dashboard for viewing registered patients
+├── api/.env                      # Environment variables (Supabase, Vapi, etc.)
 ├── vercel.json                   # Vercel deployment configuration
 ├── requirements.txt              # Python dependencies list
 ├── schema.sql                    # Supabase database schema (patients table, indexes, triggers)
@@ -53,15 +47,10 @@ patient-registration/
 
 | File | Purpose |
 |------|---------|
-| `main.py` | Entry point. Starts the server using uvicorn on port 8000. |
-| `api/__init__.py` | Package initializer. Imports the FastAPI app from `api/index.py`. |
-| `api/config.py` | Loads environment variables from `api/.env`. Exports `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. |
-| `api/database.py` | Creates the Supabase client. Defines `supabase` object, `US_STATE_ABBR` constant, and helper functions: `now_utc()`, `error_response()`, `success_response()`, `serialize_row()`. |
-| `api/models.py` | Defines all Pydantic data models: `PatientCreate`, `PatientUpdate`, `PhoneCheck`. Includes field validators for phone, zip, state, DOB. |
-| `api/index.py` | Contains everything else: FastAPI app instance, validation error handler, all CRUD endpoints (`/`, `/patients`, `/patients/:id`, `/patients/check-phone`), HTML dashboard (`/dashboard`), and Vapi webhook (`/vapi-webhook`). |
-| `api/.env` | Stores sensitive credentials: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPI_API_KEY`, `BASE_URL`, `STAFF_PHONE`. |
-| `schema.sql` | SQL script to create the `patients` table, indexes, triggers, and seed data in Supabase. |
+| `backend.py` | **API server.** Contains config loading, Supabase client, US state list, helper functions (`now_utc`, `error_response`, `success_response`, `serialize_row`), all Pydantic models (`PatientCreate`, `PatientUpdate`, `PhoneCheck`), FastAPI app instance, validation error handler, all CRUD endpoints (`/`, `/patients`, `/patients/:id`, `/patients/check-phone`), and Vapi webhook (`/vapi-webhook`). Runs uvicorn on port 8000 when executed directly. |
+| `frontend.py` | **Dashboard router.** Provides the `/dashboard` endpoint that renders an HTML table showing all registered patients with name, phone, DOB, sex, address, and emergency contact columns. |
 | `requirements.txt` | Lists all Python packages needed to run the project. |
+| `schema.sql` | SQL script to create the `patients` table, indexes, triggers, and seed data in Supabase. |
 | `vercel.json` | Tells Vercel how to build and deploy the application (framework, build steps, routing). |
 | `.gitignore` | Prevents sensitive files (`.env`, `venv/`, `__pycache__/`) from being committed to Git. |
 
@@ -103,10 +92,10 @@ patient-registration/
    - **Important**: `SUPABASE_URL` should be `https://zjmsaiqztajzfclishnk.supabase.co` (without `/rest/v1/`).
 
 6. **Run the server locally**
-   ```bash
-   python main.py
-   ```
-   The API will be available at `http://localhost:8000`.
+    ```bash
+    python backend.py
+    ```
+    The API will be available at `http://localhost:8000`.
 
 7. **Test the API**
    - Health check: `http://localhost:8000/`
@@ -128,7 +117,7 @@ patient-registration/
 venv\Scripts\activate
 
 # Run the server
-python main.py
+python backend.py
 ```
 
 The server starts with hot-reload on `http://localhost:8000`. All endpoints are available at this address.
@@ -179,12 +168,12 @@ The application is live at: `https://your-app.vercel.app`
 1. Push code to GitHub/GitLab
 2. Go to [vercel.com](https://vercel.com) and create a new project
 3. Import your repository
-4. Add environment variables from `api/.env`:
-   - `SUPABASE_URL`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `VAPI_API_KEY`
-   - `BASE_URL`
-   - `STAFF_PHONE`
+4. Add environment variables:
+    - `SUPABASE_URL`
+    - `SUPABASE_SERVICE_ROLE_KEY`
+    - `VAPI_API_KEY`
+    - `BASE_URL`
+    - `STAFF_PHONE`
 5. Click **Deploy**
 6. Vercel automatically detects `requirements.txt` and `vercel.json`
 

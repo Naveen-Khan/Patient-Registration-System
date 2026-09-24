@@ -7,10 +7,17 @@
   ],
   "routes": [
     {
+      "src": "/dashboard",
+      "dest": "/backend.py"
+    },
+    {
+      "src": "/vapi-webhook",
+      "dest": "/backend.py"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/main.py"
+      "dest": "/backend.py"
     }
   ],
-  "framework": "fastapi",
-  "regions": ["iad1"]
+  "framework": "fastapi"
 }

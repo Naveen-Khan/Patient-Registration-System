@@ -1,3 +1,200 @@
+# Voice AI Agent - Patient Registration API
+# Single file backend. Run with: python backend.py
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.getcwd(), "api", ".env"))
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+
+from datetime import datetime, timezone
+from typing import Optional
+from fastapi.responses import JSONResponse
+
+from supabase import create_client, Client
+import os
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+US_STATE_ABBR = {
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA",
+    "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT",
+    "VA", "WA", "WV", "WI", "WY"
+}
+
+def now_utc() -> str:
+    """Return current UTC timestamp in ISO format."""
+    return datetime.now(timezone.utc).isoformat()
+
+def error_response(status_code: int, detail: str) -> JSONResponse:
+    """Return a standardized error response."""
+    return JSONResponse(status_code=status_code, content={"data": None, "error": detail})
+
+def success_response(data: dict) -> JSONResponse:
+    """Return a standardized success response."""
+    return JSONResponse(status_code=200, content={"data": data, "error": None})
+
+def serialize_row(row: dict) -> Optional[dict]:
+    """Clean a database row by removing soft-delete metadata before returning."""
+    if not row:
+        return None
+    row.pop("deleted_at", None)
+    return row
+
+
+from pydantic import BaseModel, Field, field_validator, ConfigDict
+from typing import Optional
+import re
+from datetime import datetime
+US_STATE_ABBR = {"AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"}
+
+
+class PatientCreate(BaseModel):
+    """Schema for creating a new patient record."""
+    first_name: str = Field(..., min_length=1, max_length=50)
+    last_name: str = Field(..., min_length=1, max_length=50)
+    date_of_birth: str = Field(..., pattern=r"^\d{2}/\d{2}/\d{4}$")
+    sex: str = Field(..., pattern=r"^(Male|Female|Other|Decline to Answer)$")
+    phone_number: str = Field(..., min_length=10, max_length=15)
+    address_line_1: str = Field(..., min_length=1, max_length=200)
+    city: str = Field(..., min_length=1, max_length=100)
+    state: str = Field(..., min_length=2, max_length=2)
+    zip_code: str = Field(..., min_length=5, max_length=10)
+    email: Optional[str] = Field(None, max_length=255)
+    address_line_2: Optional[str] = Field(None, max_length=200)
+    insurance_provider: Optional[str] = Field(None, max_length=200)
+    insurance_member_id: Optional[str] = Field(None, max_length=100)
+    preferred_language: str = "English"
+    emergency_contact_name: Optional[str] = Field(None, max_length=100)
+    emergency_contact_phone: Optional[str] = Field(None, max_length=15)
+
+    model_config = ConfigDict(extra="ignore")
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def validate_names(cls, v: str) -> str:
+        if not re.match(r"^[A-Za-z\-']{1,50}$", v):
+            raise ValueError("Name must be 1-50 characters, alphabetic with hyphens/apostrophes only")
+        return v
+
+    @field_validator("state")
+    @classmethod
+    def validate_state(cls, v: str) -> str:
+        if v not in US_STATE_ABBR:
+            raise ValueError("State must be a valid 2-letter US state abbreviation")
+        return v
+
+    @field_validator("zip_code")
+    @classmethod
+    def validate_zip(cls, v: str) -> str:
+        if not re.match(r"^\d{5}(-\d{4})?$", v):
+            raise ValueError("ZIP code must be 5-digit or ZIP+4 format")
+        return v
+
+    @field_validator("phone_number")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        if len(re.sub(r"[^\d]", "", v)) != 10:
+            raise ValueError("Phone number must be a valid 10-digit US phone number")
+        return v
+
+    @field_validator("emergency_contact_phone")
+    @classmethod
+    def validate_emergency_phone(cls, v: Optional[str]) -> Optional[str]:
+        if v and len(re.sub(r"[^\d]", "", v)) != 10:
+            raise ValueError("Emergency contact phone must be a valid 10-digit US phone number")
+        return v
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_dob(cls, v: str) -> str:
+        try:
+            dob = datetime.strptime(v, "%m/%d/%Y")
+            if dob > datetime.now():
+                raise ValueError("Date of birth cannot be in the future")
+        except ValueError:
+            raise ValueError("Date of birth must be a valid date in MM/DD/YYYY format and not in the future")
+        return v
+
+
+class PatientUpdate(BaseModel):
+    """Schema for updating an existing patient record (partial updates)."""
+    first_name: Optional[str] = Field(None, min_length=1, max_length=50)
+    last_name: Optional[str] = Field(None, min_length=1, max_length=50)
+    date_of_birth: Optional[str] = Field(None, pattern=r"^\d{2}/\d{2}/\d{4}$")
+    sex: Optional[str] = Field(None, pattern=r"^(Male|Female|Other|Decline to Answer)$")
+    phone_number: Optional[str] = Field(None, min_length=10, max_length=15)
+    address_line_1: Optional[str] = Field(None, min_length=1, max_length=200)
+    address_line_2: Optional[str] = Field(None, max_length=200)
+    city: Optional[str] = Field(None, min_length=1, max_length=100)
+    state: Optional[str] = Field(None, min_length=2, max_length=2)
+    zip_code: Optional[str] = Field(None, min_length=5, max_length=10)
+    email: Optional[str] = Field(None, max_length=255)
+    insurance_provider: Optional[str] = Field(None, max_length=200)
+    insurance_member_id: Optional[str] = Field(None, max_length=100)
+    preferred_language: Optional[str] = None
+    emergency_contact_name: Optional[str] = Field(None, max_length=100)
+    emergency_contact_phone: Optional[str] = Field(None, max_length=15)
+
+    model_config = ConfigDict(extra="ignore")
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def validate_names(cls, v: Optional[str]) -> Optional[str]:
+        if v and not re.match(r"^[A-Za-z\-']{1,50}$", v):
+            raise ValueError("Name must be 1-50 characters, alphabetic with hyphens/apostrophes only")
+        return v
+
+    @field_validator("state")
+    @classmethod
+    def validate_state(cls, v: Optional[str]) -> Optional[str]:
+        if v and v not in US_STATE_ABBR:
+            raise ValueError("State must be a valid 2-letter US state abbreviation")
+        return v
+
+    @field_validator("zip_code")
+    @classmethod
+    def validate_zip(cls, v: Optional[str]) -> Optional[str]:
+        if v and not re.match(r"^\d{5}(-\d{4})?$", v):
+            raise ValueError("ZIP code must be 5-digit or ZIP+4 format")
+        return v
+
+    @field_validator("phone_number")
+    @classmethod
+    def validate_phone(cls, v: Optional[str]) -> Optional[str]:
+        if v and len(re.sub(r"[^\d]", "", v)) != 10:
+            raise ValueError("Phone number must be a valid 10-digit US phone number")
+        return v
+
+    @field_validator("emergency_contact_phone")
+    @classmethod
+    def validate_emergency_phone(cls, v: Optional[str]) -> Optional[str]:
+        if v and len(re.sub(r"[^\d]", "", v)) != 10:
+            raise ValueError("Emergency contact phone must be a valid 10-digit US phone number")
+        return v
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_dob(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            try:
+                dob = datetime.strptime(v, "%m/%d/%Y")
+                if dob > datetime.now():
+                    raise ValueError("Date of birth cannot be in the future")
+            except ValueError:
+                raise ValueError("Date of birth must be a valid date in MM/DD/YYYY format and not in the future")
+        return v
+
+
+class PhoneCheck(BaseModel):
+    """Schema for checking if a phone number already exists."""
+    phone_number: str
+
+
 """
 Voice AI Agent - Patient Registration API
 ==========================================
@@ -12,8 +209,6 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from datetime import datetime
 import uuid
 
-from .database import supabase, serialize_row, error_response, success_response, now_utc
-from .models import PatientCreate, PatientUpdate, PhoneCheck
 
 # --- FastAPI App ---
 app = FastAPI(title="Voice AI Agent - Patient Registration API")
@@ -150,105 +345,17 @@ async def check_phone_duplicate(check: PhoneCheck):
     except Exception as e:
         return error_response(500, str(e))
 
-# --- Dashboard UI Route ---
-
-@app.get("/dashboard", response_class=HTMLResponse)
-async def get_dashboard():
-    """Render an HTML dashboard showing all registered patients in a styled table."""
-    response = supabase.table("patients").select("*").order("created_at", desc=True).execute()
-    patients = response.data if response.data else []
-
-    rows = ""
-    if not patients:
-        rows = "<tr><td colspan='6' class='text-center py-10 text-gray-400'>No patients registered yet. Register patients via the AI Agent!</td></tr>"
-    else:
-        for p in patients:
-            full_name = f"{p.get('first_name', '')} {p.get('last_name', '')}"
-            phone = p.get('phone_number', 'N/A')
-            dob = p.get('date_of_birth', 'N/A')
-            sex = p.get('sex', 'N/A')
-            address = f"{p.get('address_line_1', '')}, {p.get('city', '')}, {p.get('state', '')} {p.get('zip_code', '')}"
-            ec_name = p.get('emergency_contact_name', 'N/A')
-            ec_phone = p.get('emergency_contact_phone', 'N/A')
-            rows += f"""
-            <tr class='border-b border-gray-100 hover:bg-gray-50'>
-                <td class='px-6 py-4 text-sm font-bold text-gray-900'>{full_name}</td>
-                <td class='px-6 py-4 text-sm text-gray-600'>{phone}</td>
-                <td class='px-6 py-4 text-sm text-gray-600'>{dob}</td>
-                <td class='px-6 py-4 text-sm'><span class='px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800'>{sex}</span></td>
-                <td class='px-6 py-4 text-sm text-gray-600 max-w-xs truncate'>{address}</td>
-                <td class='px-6 py-4 text-sm text-gray-600'><div class='font-medium'>{ec_name}</div><div class='text-gray-500'>{ec_phone}</div></td>
-            </tr>
-            """
-
-    html_content = f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Meridian Health Clinic - Dashboard</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-    </head>
-    <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-        <header class="bg-gradient-to-r from-blue-600 to-indigo-700 shadow-lg">
-            <div class="max-w-7xl mx-auto px-4 py-5 flex justify-between items-center">
-                <div>
-                    <h1 class="text-2xl font-bold text-white">Meridian Health Clinic</h1>
-                    <p class="text-blue-200 text-sm mt-1">Patient Registration System</p>
-                </div>
-                <div class="bg-white/20 backdrop-blur text-white px-5 py-2.5 rounded-xl text-sm font-semibold border border-white/30">
-                    Total Patients: {len(patients)}
-                </div>
-            </div>
-        </header>
-        <main class="max-w-7xl mx-auto px-4 py-8">
-            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                    <h2 class="text-xl font-bold text-gray-800">Registered Patients</h2>
-                    <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">{len(patients)} records</span>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class='px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider'>Name</th>
-                                <th class='px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider'>Phone</th>
-                                <th class='px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider'>DOB</th>
-                                <th class='px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider'>Sex</th>
-                                <th class='px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider'>Address</th>
-                                <th class='px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider'>Emergency Contact</th>
-                            </tr>
-                        </thead>
-                        <tbody class='bg-white divide-y divide-gray-100'>{rows}</tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html_content)
-
-# --- Vapi Webhook Route ---
-
 @app.post("/vapi-webhook")
 async def vapi_webhook(request: Request):
-    """Handle incoming webhook calls from the Vapi voice AI platform.
-
-    Processes function calls from the AI agent to check patients, register new patients,
-    and update patient information during phone conversations.
-    """
+    """Handle incoming webhook calls from the Vapi voice AI platform."""
     payload = await request.json()
     message = payload.get("message", {})
     if message.get("type") != "function-call":
         return JSONResponse(content={"status": "ignored"}, status_code=200)
-
     function_call = message.get("functionCall", {})
     func_name = function_call.get("name")
     parameters = function_call.get("parameters", {})
     print(f"Received Tool Call: {func_name} with params: {parameters}")
-
     if func_name == "checkExistingPatient":
         try:
             phone = parameters.get("phone_number")
@@ -259,7 +366,6 @@ async def vapi_webhook(request: Request):
             return {"result": {"exists": False, "patient": None}}
         except Exception as e:
             return {"result": {"success": False, "error": str(e)}}
-
     elif func_name == "registerPatient":
         try:
             patient_data = PatientCreate(**parameters)
@@ -279,7 +385,6 @@ async def vapi_webhook(request: Request):
         except Exception as e:
             print(f"Error registering patient via Vapi: {str(e)}")
             return {"result": {"success": False, "error": str(e)}}
-
     elif func_name == "updatePatient":
         try:
             patient_id = parameters.get("patient_id")
@@ -296,7 +401,6 @@ async def vapi_webhook(request: Request):
             return {"result": {"success": True, "patient_id": patient_id}}
         except Exception as e:
             return {"result": {"success": False, "error": str(e)}}
-
     elif func_name == "checkAvailability":
         requested_date = parameters.get("date", datetime.now().strftime("%Y-%m-%d"))
         return {"result": {"success": True, "available_slots": [{"date": requested_date, "time": "09:00 AM"}, {"date": requested_date, "time": "11:30 AM"}]}}
@@ -306,5 +410,15 @@ async def vapi_webhook(request: Request):
         return {"result": {"success": True}}
     elif func_name == "transferCall":
         return {"result": {"success": True}}
-
     return {"result": {"success": False, "error": "Unknown function"}}
+
+
+# --- Frontend Dashboard ---
+from frontend import router as frontend_router
+app.include_router(frontend_router)
+
+# --- Run Server ---
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run("backend:app", host="0.0.0.0", port=8000, reload=True)
