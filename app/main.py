@@ -1,7 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from app.routes import patient_router, webhook_router, dashboard_router
+from app.routes.patient import router as patient_router
+from app.routes.webhook import router as webhook_router
+from app.routes.dashboard import router as dashboard_router
 from app.utils.helpers import now_utc, error_response
 
 app = FastAPI(title="Voice AI Agent - Patient Registration API")

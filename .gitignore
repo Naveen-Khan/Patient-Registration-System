@@ -1,10 +1,7 @@
 api/.env
 .env
 venv
-web/venv
 __pycache__
-app/__pycache__
-web/__pycache__
 *.pyc
 *.egg-info
 dist
