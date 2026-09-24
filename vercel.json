@@ -1,13 +1,25 @@
 {
   "builds": [
     {
-      "src": "requirements.txt",
+      "src": "backend.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
+      "src": "/",
+      "dest": "/backend.py"
+    },
+    {
       "src": "/dashboard",
+      "dest": "/backend.py"
+    },
+    {
+      "src": "/patients",
+      "dest": "/backend.py"
+    },
+    {
+      "src": "/patients/check-phone",
       "dest": "/backend.py"
     },
     {
