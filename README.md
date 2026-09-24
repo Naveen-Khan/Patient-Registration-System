@@ -22,9 +22,50 @@ Phone Call (Caller)
 |-------|-----------|---------|
 | **Telephony/Voice AI** | Vapi | Handles phone calls, STT/TTS, and LLM conversation |
 | **Backend API** | FastAPI (Python) | REST API for patient CRUD operations |
-| **Database** | Supabase (PostgreSQL) | Persistent patient records with UUID, soft-delete |
+| **Database** | Supabase (PostgreSQL) | Persistent patient records |
 | **Voice Model** | OpenAI GPT-4o-mini | Natural language understanding and generation |
 | **STT/TTS** | Deepgram / ElevenLabs | Speech-to-text and text-to-speech |
+
+---
+
+## Project Structure
+
+```
+patient-registration/
+│
+├── api/                          # Main backend package (4 organized files)
+│   ├── __init__.py               # Package initializer - imports the FastAPI app
+│   ├── config.py                 # Environment variables (loads .env file)
+│   ├── database.py               # Supabase client + constants + helper functions
+│   ├── models.py                 # Pydantic schemas (PatientCreate, PatientUpdate, PhoneCheck)
+│   └── index.py                  # Everything else: app, all routes, dashboard, webhook
+│   └── .env                      # Environment variables (Supabase URL, keys, etc.)
+│
+├── main.py                       # Entry point - runs the FastAPI server with uvicorn
+├── vercel.json                   # Vercel deployment configuration
+├── requirements.txt              # Python dependencies list
+├── schema.sql                    # Supabase database schema (patients table, indexes, triggers)
+├── README.md                     # This file
+└── .gitignore                    # Files to ignore (venv, .env, __pycache__)
+```
+
+### File Purpose Reference
+
+| File | Purpose |
+|------|---------|
+| `main.py` | Entry point. Starts the server using uvicorn on port 8000. |
+| `api/__init__.py` | Package initializer. Imports the FastAPI app from `api/index.py`. |
+| `api/config.py` | Loads environment variables from `api/.env`. Exports `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. |
+| `api/database.py` | Creates the Supabase client. Defines `supabase` object, `US_STATE_ABBR` constant, and helper functions: `now_utc()`, `error_response()`, `success_response()`, `serialize_row()`. |
+| `api/models.py` | Defines all Pydantic data models: `PatientCreate`, `PatientUpdate`, `PhoneCheck`. Includes field validators for phone, zip, state, DOB. |
+| `api/index.py` | Contains everything else: FastAPI app instance, validation error handler, all CRUD endpoints (`/`, `/patients`, `/patients/:id`, `/patients/check-phone`), HTML dashboard (`/dashboard`), and Vapi webhook (`/vapi-webhook`). |
+| `api/.env` | Stores sensitive credentials: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPI_API_KEY`, `BASE_URL`, `STAFF_PHONE`. |
+| `schema.sql` | SQL script to create the `patients` table, indexes, triggers, and seed data in Supabase. |
+| `requirements.txt` | Lists all Python packages needed to run the project. |
+| `vercel.json` | Tells Vercel how to build and deploy the application (framework, build steps, routing). |
+| `.gitignore` | Prevents sensitive files (`.env`, `venv/`, `__pycache__/`) from being committed to Git. |
+
+---
 
 ## Quick Start
 
@@ -33,115 +74,78 @@ Phone Call (Caller)
 - Python 3.11+
 - Supabase project with credentials
 - Vapi API key
-- `.env` file configured
+- `api/.env` file configured
 
 ### Setup Instructions
 
 1. **Clone the repository**
-    ```bash
-    git clone <repo-url>
-    cd patient-registration
-    ```
+   ```bash
+   git clone <repo-url>
+   cd patient-registration
+   ```
 
 2. **Create virtual environment**
-    ```bash
-    python -m venv venv
-    source venv/Scripts/activate  # On Windows: venv\Scripts\activate
-    ```
+   ```bash
+   python -m venv venv
+   venv\Scripts\activate  # On Windows
+   ```
 
 3. **Install dependencies**
-    ```bash
-    pip install -r requirements.txt
-    ```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 4. **Set up Supabase Database**
-    - Run `schema.sql` in your Supabase SQL editor to create the `patients` table, indexes, triggers, and seed data.
+   - Run `schema.sql` in your Supabase SQL editor to create the `patients` table, indexes, triggers, and seed data.
 
 5. **Configure environment variables**
-    - Edit `.env` with your Supabase URL, service role key, and Vapi API key.
+   - Edit `api/.env` with your Supabase URL, service role key, and Vapi API key.
+   - **Important**: `SUPABASE_URL` should be `https://zjmsaiqztajzfclishnk.supabase.co` (without `/rest/v1/`).
 
 6. **Run the server locally**
-    ```bash
-    python main.py
-    ```
-    The API will be available at `http://localhost:8000`.
+   ```bash
+   python main.py
+   ```
+   The API will be available at `http://localhost:8000`.
 
-7. **Configure Vapi Assistant**
-    - Import `vapi_assistant.json` into the Vapi dashboard.
-    - Set `BASE_URL` to your deployed API URL (e.g., `https://your-app.railway.app`).
-    - Provision a phone number in Vapi.
+7. **Test the API**
+   - Health check: `http://localhost:8000/`
+   - List patients: `http://localhost:8000/patients`
+   - Dashboard: `http://localhost:8000/dashboard`
 
-## Deployment
+8. **Configure Vapi Assistant**
+   - Set `BASE_URL` to your deployed API URL (e.g., `https://your-app.vercel.app`).
+   - Provision a phone number in Vapi.
 
-### Deploy to Vercel
+---
 
-This project is configured for Vercel deployment:
+## Running the Project
 
-1. **Install Vercel CLI**
-    ```bash
-    npm install -g vercel
-    ```
+### Local Development
 
-2. **Login to Vercel**
-    ```bash
-    vercel login
-    ```
+```bash
+# Activate virtual environment
+venv\Scripts\activate
 
-3. **Set environment variables on Vercel**
-    ```bash
-    vercel env add SUPABASE_URL
-    vercel env add SUPABASE_SERVICE_ROLE_KEY
-    vercel env add VAPI_API_KEY
-    vercel env add BASE_URL
-    vercel env add STAFF_PHONE
-    ```
+# Run the server
+python main.py
+```
 
-4. **Deploy**
-    ```bash
-    vercel --prod
-    ```
+The server starts with hot-reload on `http://localhost:8000`. All endpoints are available at this address.
 
-5. **After deployment**, note the URL (e.g., `https://your-app.vercel.app`) and set it as `BASE_URL` in Vercel environment variables. Then configure the Vapi assistant to use this URL.
-
-### Deploy to Railway
-
-1. Push code to GitHub/GitLab
-2. Go to [Railway.app](https://railway.app) and create a new project
-3. Link your GitHub repository
-4. Add environment variables from `.env`
-5. Deploy — Railway will detect `requirements.txt` and `main.py`
-
-### Deploy to Render
-
-1. Push code to GitHub/GitLab
-2. Go to [Render.com](https://render.com) and create a new Web Service
-3. Connect your repository
-4. Set build command: `pip install -r requirements.txt`
-5. Set start command: `python main.py`
-6. Add environment variables from `.env`
-7. Deploy
-
-## Environment Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `SUPABASE_URL` | Supabase project URL | `https://zjmsaiqztajzfclishnk.supabase.co/rest/v1/` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (admin) | `sb_secret_...` |
-| `VAPI_API_KEY` | Vapi platform API key | `8de0284f-...` |
-| `BASE_URL` | Base URL of the deployed API (used by Vapi) | `https://your-app.railway.app` |
-| `STAFF_PHONE` | Staff phone for transfers | `+1 (463) 223 1070` |
-
-## API Endpoints
+### Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/` | Health check |
+| `GET` | `/dashboard` | Web dashboard for viewing all patients |
 | `GET` | `/patients` | List all patients (supports `?last_name=`, `?date_of_birth=`, `?phone_number=`) |
 | `GET` | `/patients/:id` | Get single patient by UUID |
 | `POST` | `/patients` | Create new patient (checks for duplicate phone) |
 | `PUT` | `/patients/:id` | Update existing patient (partial updates) |
-| `DELETE` | `/patients/:id` | Soft-delete patient (sets `deleted_at`) |
+| `DELETE` | `/patients/:id` | Delete patient |
 | `POST` | `/patients/check-phone` | Check if phone number is a duplicate |
+| `POST` | `/vapi-webhook` | Vapi voice agent webhook |
 
 ### Response Format
 
@@ -160,13 +164,50 @@ All responses follow the consistent envelope:
 - `422` - Validation error
 - `500` - Internal server error
 
+---
+
+## Deployment
+
+This project is deployed on Vercel.
+
+### Deployed App
+
+The application is live at: `https://your-app.vercel.app`
+
+### Deploy to Vercel
+
+1. Push code to GitHub/GitLab
+2. Go to [vercel.com](https://vercel.com) and create a new project
+3. Import your repository
+4. Add environment variables from `api/.env`:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `VAPI_API_KEY`
+   - `BASE_URL`
+   - `STAFF_PHONE`
+5. Click **Deploy**
+6. Vercel automatically detects `requirements.txt` and `vercel.json`
+
+---
+
+## Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `SUPABASE_URL` | Supabase project URL (no trailing `/rest/v1/`) | `https://zjmsaiqztajzfclishnk.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (admin) | `sb_secret_...` |
+| `VAPI_API_KEY` | Vapi platform API key | `8de0284f-...` |
+| `BASE_URL` | Base URL of the deployed API (used by Vapi) | `https://your-app.vercel.app` |
+| `STAFF_PHONE` | Staff phone for transfers | `+1 (463) 223 1070` |
+
+---
+
 ## Vapi Assistant Configuration
 
-The Vapi assistant is configured in `vapi_assistant.json` with:
+The Vapi assistant is configured with:
 
 - **Model**: OpenAI GPT-4o-mini
 - **Voice**: Alloy
-- **Tools**: `check_phone_duplicate`, `create_patient`, `update_patient`
 - **System Prompt**: Natural conversational flow for patient registration
 
 The assistant:
@@ -175,6 +216,8 @@ The assistant:
 3. Checks for duplicate phone numbers
 4. Confirms all information before saving
 5. Provides success confirmation or error messages
+
+---
 
 ## Validation Rules
 
@@ -188,6 +231,8 @@ The assistant:
 | `zip_code` | 5-digit or ZIP+4 format |
 | `email` | Valid email format |
 
+---
+
 ## Observability
 
 All agent conversations and registration events are logged to stdout:
@@ -195,18 +240,21 @@ All agent conversations and registration events are logged to stdout:
 [VOICE AGENT] New patient registered: Jane Doe (ID: a1b2c3d4-...)
 ```
 
+---
+
 ## Known Limitations / Trade-offs
 
-- **Development mode**: Currently designed for local development with ngrok for Vapi webhook access. For production, deploy to Railway/Render/Fly.io.
+- **Development mode**: Local development uses `uvicorn` for hot-reload. For production, serverless deployment via Vercel.
 - **RLS**: Row Level Security is enabled but the service role key bypasses it. In production, consider using the anon key with proper policies.
 - **No async processing**: Phone call webhooks are handled synchronously. For high call volumes, consider an async task queue.
-- **Soft-delete only**: Deleted records are marked but not permanently removed. Consider a cleanup job for compliance.
+
+---
 
 ## Next Steps
 
-- [x] Deploy to Vercel
 - [ ] Configure Vapi assistant with deployed BASE_URL
 - [ ] Provision a phone number in Vapi
+- [ ] Apply `schema.sql` to Supabase database
 - [ ] Add unit tests for API endpoints
 - [ ] Add appointment scheduling after registration
 - [ ] Add multi-language support (Spanish)
@@ -214,22 +262,7 @@ All agent conversations and registration events are logged to stdout:
 - [ ] Create simple web dashboard for viewing patients
 - [ ] Add automated test suite
 
-## Vapi Connection Guide
-
-To connect this backend to Vapi:
-
-1. **Deploy the backend** to Vercel (or Railway/Render)
-2. **Note the deployed URL** (e.g., `https://your-app.vercel.app`)
-3. **Set `BASE_URL`** to the deployed URL in your `.env` file
-4. **In Vapi Dashboard**:
-   - Create a new Assistant
-   - Use the system prompt from `vapi_assistant.json`
-   - Add the 3 tools (`check_phone_duplicate`, `create_patient`, `update_patient`) with endpoints pointing to `{BASE_URL}/patients/...`
-   - Set the model to `gpt-4o-mini`
-   - Set STT to Deepgram and TTS to ElevenLabs
-   - Select a voice (e.g., Alloy)
-5. **Provision a phone number** in Vapi
-6. **Test** by calling the number and going through patient registration
+---
 
 ## License
 
