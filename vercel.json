@@ -1,35 +1,12 @@
 {
   "builds": [
     {
-      "src": "app/main.py",
+      "src": "api/index.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
-    {
-      "src": "/",
-      "dest": "/app/main.py"
-    },
-    {
-      "src": "/dashboard",
-      "dest": "/app/main.py"
-    },
-    {
-      "src": "/patients",
-      "dest": "/app/main.py"
-    },
-    {
-      "src": "/patients/check-phone",
-      "dest": "/app/main.py"
-    },
-    {
-      "src": "/vapi-webhook",
-      "dest": "/app/main.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/app/main.py"
-    }
+    { "src": "/(.*)", "dest": "/api/index.py" }
   ],
   "framework": "fastapi"
 }

@@ -1,1 +1,0 @@
-from app.services.supabase import supabase
