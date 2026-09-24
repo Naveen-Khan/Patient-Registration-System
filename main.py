@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 from supabase import create_client
 
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env.local"))
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env.local"), override=False)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
