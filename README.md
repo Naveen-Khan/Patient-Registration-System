@@ -41,7 +41,7 @@ patient-registration/
 │   ├── config.py                 # Environment configuration and constants
 │   ├── models/
 │   │   ├── __init__.py
-│   │   └── patient.py            # Pydantic schemas (PatientCreate, PatientUpdate, PhoneCheck)
+│   │   └── patient.py            # Pydantic schemas
 │   ├── routes/
 │   │   ├── __init__.py
 │   │   ├── patient.py            # Patient CRUD endpoints
@@ -52,7 +52,16 @@ patient-registration/
 │   │   └── supabase.py           # Supabase client initialization
 │   └── utils/
 │       ├── __init__.py
-│       └── helpers.py            # Helper functions (now_utc, error_response, serialize_row)
+│       └── helpers.py            # Helper functions
+├── web/                          # Flask web interface
+│   ├── app.py                    # Flask application entry point
+│   ├── templates/
+│   │   ├── base.html             # Base HTML template
+│   │   ├── index.html            # Home page with registration form
+│   │   └── patients.html         # Patient list table
+│   └── static/
+│       └── css/
+│           └── style.css         # Stylesheet
 ├── venv/
 ├── requirements.txt
 ├── schema.sql
@@ -73,6 +82,11 @@ patient-registration/
 | `app/routes/dashboard.py` | **Dashboard.** Renders HTML table of all registered patients at `/dashboard`. |
 | `app/services/supabase.py` | **Supabase client.** Initializes and exports the Supabase client instance. |
 | `app/utils/helpers.py` | **Utilities.** `now_utc()`, `error_response()`, `success_response()`, `serialize_row()`. |
+| `web/app.py` | **Flask web interface.** Main entry point for the Flask web app (runs on port 5000). |
+| `web/templates/base.html` | Base HTML template with navbar and flash message support. |
+| `web/templates/index.html` | Home page with patient registration form. |
+| `web/templates/patients.html` | Patient list table with delete action. |
+| `web/static/css/style.css` | Stylesheet for the web interface. |
 | `requirements.txt` | Lists all Python packages needed to run the project. |
 | `schema.sql` | SQL script to create the `patients` table, indexes, triggers, and seed data in Supabase. |
 | `vercel.json` | Tells Vercel how to build and deploy the application. |
@@ -115,18 +129,25 @@ patient-registration/
    - Edit `api/.env` with your Supabase URL, service role key, and Vapi API key.
    - **Important**: `SUPABASE_URL` should be `https://zjmsaiqztajzfclishnk.supabase.co` (without `/rest/v1/`).
 
-6. **Run the server locally**
-     ```bash
-     python -m app.main
-     ```
-     The API will be available at `http://localhost:8000`.
+6. **Run the FastAPI server**
+      ```bash
+      python -m app.main
+      ```
+      The API will be available at `http://localhost:8000`.
 
-7. **Test the API**
-   - Health check: `http://localhost:8000/`
-   - List patients: `http://localhost:8000/patients`
-   - Dashboard: `http://localhost:8000/dashboard`
+7. **Run the Flask web interface**
+      ```bash
+      python -m web.app
+      ```
+      The web interface will be available at `http://localhost:5000`.
 
-8. **Configure Vapi Assistant** ✅
+8. **Test the API**
+    - Health check: `http://localhost:8000/`
+    - List patients: `http://localhost:8000/patients`
+    - Dashboard: `http://localhost:8000/dashboard`
+    - Web Dashboard: `http://localhost:5000/patients`
+
+9. **Configure Vapi Assistant** ✅
     - Vapi API key configured in `api/.env`
     - **Model**: OpenAI GPT-4o-mini
     - **Voice**: Alloy
@@ -150,6 +171,18 @@ python -m app.main
 
 The server starts with hot-reload on `http://localhost:8000`. All endpoints are available at this address.
 
+### Flask Web Interface
+
+```bash
+# Activate virtual environment
+venv\Scripts\activate
+
+# Run the web interface
+python -m web.app
+```
+
+The web interface starts on `http://localhost:5000` with a simple HTML dashboard for registering and viewing patients.
+
 ### Endpoints
 
 | Method | Endpoint | Description |
@@ -163,6 +196,10 @@ The server starts with hot-reload on `http://localhost:8000`. All endpoints are 
 | `DELETE` | `/patients/:id` | Delete patient |
 | `POST` | `/patients/check-phone` | Check if phone number is a duplicate |
 | `POST` | `/vapi-webhook` | Vapi voice agent webhook |
+| `GET` | `/` (Flask) | Web home page with registration form |
+| `GET` | `/patients` (Flask) | Web dashboard with patient table |
+| `POST` | `/patients` (Flask) | Register new patient via web form |
+| `POST` | `/patients/:id/delete` (Flask) | Delete patient from web interface |
 
 ### Response Format
 
