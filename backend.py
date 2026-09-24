@@ -4,7 +4,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv(os.path.join(os.getcwd(), "api", ".env"))
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "api", ".env"))
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")

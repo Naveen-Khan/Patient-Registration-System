@@ -35,20 +35,21 @@ patient-registration/
 │
 ├── backend.py                    # FastAPI server: config, database, models, CRUD, webhook, server runner
 ├── frontend.py                   # FastAPI router: HTML dashboard for viewing registered patients
-├── api/.env                      # Environment variables (Supabase, Vapi, etc.)
+├── api/
+│   └── .env                      # Environment variables (Supabase, Vapi, etc.)
 ├── vercel.json                   # Vercel deployment configuration
 ├── requirements.txt              # Python dependencies list
 ├── schema.sql                    # Supabase database schema (patients table, indexes, triggers)
 ├── README.md                     # This file
-└── .gitignore                    # Files to ignore (venv, .env, __pycache__)
+└── .gitignore                    # Files to ignore (venv, __pycache__, api/.env)
 ```
 
 ### File Purpose Reference
 
 | File | Purpose |
 |------|---------|
-| `backend.py` | **API server.** Contains config loading, Supabase client, US state list, helper functions (`now_utc`, `error_response`, `success_response`, `serialize_row`), all Pydantic models (`PatientCreate`, `PatientUpdate`, `PhoneCheck`), FastAPI app instance, validation error handler, all CRUD endpoints (`/`, `/patients`, `/patients/:id`, `/patients/check-phone`), and Vapi webhook (`/vapi-webhook`). Runs uvicorn on port 8000 when executed directly. |
-| `frontend.py` | **Dashboard router.** Provides the `/dashboard` endpoint that renders an HTML table showing all registered patients with name, phone, DOB, sex, address, and emergency contact columns. |
+| `backend.py` | **API server** (root level). Contains config loading, Supabase client, US state list, helper functions, all Pydantic models, FastAPI app instance, validation error handler, all CRUD endpoints, and Vapi webhook. |
+| `frontend.py` | **Dashboard router** (root level). Provides the `/dashboard` endpoint that renders an HTML table showing all registered patients. |
 | `requirements.txt` | Lists all Python packages needed to run the project. |
 | `schema.sql` | SQL script to create the `patients` table, indexes, triggers, and seed data in Supabase. |
 | `vercel.json` | Tells Vercel how to build and deploy the application (framework, build steps, routing). |
@@ -102,9 +103,13 @@ patient-registration/
    - List patients: `http://localhost:8000/patients`
    - Dashboard: `http://localhost:8000/dashboard`
 
-8. **Configure Vapi Assistant**
-   - Set `BASE_URL` to your deployed API URL (e.g., `https://your-app.vercel.app`).
-   - Provision a phone number in Vapi.
+8. **Configure Vapi Assistant** ✅
+    - Vapi API key configured in `api/.env`
+    - **Model**: OpenAI GPT-4o-mini
+    - **Voice**: Alloy
+    - **System Prompt**: Natural conversational flow for patient registration
+    - **Staff Phone**: `+1 (463) 223 1070`
+    - Provisioned a phone number in Vapi.
 
 ---
 
@@ -191,13 +196,15 @@ The application is live at: `https://your-app.vercel.app`
 
 ---
 
-## Vapi Assistant Configuration
+## Vapi Assistant Configuration ✅
 
-The Vapi assistant is configured with:
+The Vapi assistant is **configured and ready** with:
 
 - **Model**: OpenAI GPT-4o-mini
 - **Voice**: Alloy
 - **System Prompt**: Natural conversational flow for patient registration
+- **API Key**: Configured in `api/.env` (`VAPI_API_KEY`)
+- **Staff Phone**: `+1 (463) 223 1070`
 
 The assistant:
 1. Greets callers and collects required demographics
@@ -241,8 +248,9 @@ All agent conversations and registration events are logged to stdout:
 
 ## Next Steps
 
-- [ ] Configure Vapi assistant with deployed BASE_URL
-- [ ] Provision a phone number in Vapi
+- [x] Configure Vapi assistant with API key and phone number
+- [x] Provision a phone number in Vapi
+- [ ] Set `BASE_URL` to deployed API URL in Vapi
 - [ ] Apply `schema.sql` to Supabase database
 - [ ] Add unit tests for API endpoints
 - [ ] Add appointment scheduling after registration
