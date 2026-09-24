@@ -2,7 +2,8 @@
 
 ## Overview
 
-A voice-based AI patient registration system that collects U.S. patient demographic information through natural voice conversation, persists data to a database, and exposes it via a REST API.
+
+A production-oriented Voice AI agent that handles inbound patient registration calls for "Meridian Health Clinic". The AI agent ("Naveen") conducts a natural, conversational intake process, collects all required U.S. demographic data, confirms the information, and persists it to a Supabase (PostgreSQL) database. A companion REST API is exposed for querying and managing patient records.
 
 ## Architecture
 
@@ -13,7 +14,7 @@ Phone Call (Caller)
        ↕ (HTTP API calls)
    FastAPI Backend (This project)
        ↕
-   Supabase (Database + Auth)
+   Supabase (Database )
 ```
 
 ### Layers
@@ -24,10 +25,13 @@ Phone Call (Caller)
 | **Backend API** | FastAPI (Python) | REST API for patient CRUD operations |
 | **Database** | Supabase (PostgreSQL) | Persistent patient records with UUID, soft-delete |
 | **Voice Model** | OpenAI GPT-4o-mini | Natural language understanding and generation |
-| **STT/TTS** | Deepgram / ElevenLabs | Speech-to-text and text-to-speech |
+| **STT/TTS** | Elliot  Speech-to-text and text-to-speech |
 
-## Quick Start
-
+## Tech Stack and Justification
+*Voice AI and Telephony:* Vapi.ai - Abstracts the complexity of stitching STT, TTS, and LLMs. It handles telephony provisioning and tool-calling natively, saving hours of infrastructure setup.
+*Backend: Python (FastAPI)* - Chosen for its asynchronous capabilities and robust Pydantic data validation. FastAPI ensures that unstructured LLM outputs are strictly validated before hitting the database.
+*Database: Supabase (PostgreSQL) *- Chosen for its reliability, strong typing, and built-in row-level security. Supabase allows the application of strict schema constraints (regex, enums) at the database level, ensuring zero bad data enters the system.
+*Hosting:* Vercel - Used for seamless serverless deployment of the FastAPI backend. It provides a persistent, HTTPS-secured URL required by Vapi webhook
 ### Prerequisites
 
 - Python 3.11+
